@@ -24,7 +24,7 @@ final case class IncomingMessagesResult[T](sources: Seq[T], status: Int)
 class SolrFlowStage[T](collection: String,
                        client: SolrClient,
                        settings: SolrSinkSettings,
-                       messageBinder: Option[T => SolrInputDocument])
+                       messageBinder: T => SolrInputDocument)
     extends GraphStage[FlowShape[IncomingMessage[T], Future[IncomingMessagesResult[T]]]] {
 
   private val in = Inlet[IncomingMessage[T]]("messages")
@@ -50,7 +50,7 @@ sealed class SolrFlowLogic[T](
     out: Outlet[Future[IncomingMessagesResult[T]]],
     shape: FlowShape[IncomingMessage[T], Future[IncomingMessagesResult[T]]],
     settings: SolrSinkSettings,
-    messageBinder: Option[T => SolrInputDocument])
+    messageBinder: T => SolrInputDocument)
     extends TimerGraphStageLogic(shape) with OutHandler with InHandler {
 
   private var state: SolrFlowState = Idle
@@ -131,8 +131,7 @@ sealed class SolrFlowLogic[T](
     completeStage()
 
   private def sendBulkToSolr(messages: Seq[IncomingMessage[T]]): Unit = {
-    val binder = messageBinder.getOrElse(client.getBinder.toSolrInputDocument _)
-    val docs = messages.view.map(_.source).map(binder)
+    val docs = messages.view.map(_.source).map(messageBinder)
     try {
       val response = client.add(collection, docs.asJava, settings.commitWithin)
       handleResponse(messages, response)

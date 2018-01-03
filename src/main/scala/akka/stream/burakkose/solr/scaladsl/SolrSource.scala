@@ -7,7 +7,10 @@ import org.apache.solr.client.solrj.io.Tuple
 import org.apache.solr.client.solrj.io.stream.TupleStream
 
 object SolrSource {
-  def create(collection: String, typeName: String)(
-    implicit tupleStream: TupleStream): Source[Tuple, NotUsed] =
+
+  /**
+   * Scala API: creates a [[SolrSourceStage]] that consumes as [[Tuple]]
+   */
+  def apply(collection: String, tupleStream: TupleStream): Source[Tuple, NotUsed] =
     Source.fromGraph(new SolrSourceStage(collection, tupleStream))
 }
