@@ -17,22 +17,22 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-final case class IncomingMessage[T](source: T)
+final case class IncomingMessage[T, C](source: T, passThrough: C)
 
-final case class IncomingMessagesResult[T](sources: Seq[T], status: Int)
+final case class IncomingMessageResult[T, C](source: T, passThrough: C, status: Int)
 
-class SolrFlowStage[T](collection: String,
-                       client: SolrClient,
-                       settings: SolrSinkSettings,
-                       messageBinder: T => SolrInputDocument)
-    extends GraphStage[FlowShape[IncomingMessage[T], Future[IncomingMessagesResult[T]]]] {
+class SolrFlowStage[T, C](collection: String,
+                          client: SolrClient,
+                          settings: SolrSinkSettings,
+                          messageBinder: T => SolrInputDocument)
+    extends GraphStage[FlowShape[IncomingMessage[T, C], Future[Seq[IncomingMessageResult[T, C]]]]] {
 
-  private val in = Inlet[IncomingMessage[T]]("messages")
-  private val out = Outlet[Future[IncomingMessagesResult[T]]]("result")
+  private val in = Inlet[IncomingMessage[T, C]]("messages")
+  private val out = Outlet[Future[Seq[IncomingMessageResult[T, C]]]]("result")
   override val shape = FlowShape(in, out)
 
-  override def createLogic(inheritedAttributes: Attributes): SolrFlowLogic[T] =
-    new SolrFlowLogic[T](collection, client, in, out, shape, settings, messageBinder)
+  override def createLogic(inheritedAttributes: Attributes): SolrFlowLogic[T, C] =
+    new SolrFlowLogic[T, C](collection, client, in, out, shape, settings, messageBinder)
 }
 
 private sealed trait SolrFlowState
@@ -43,19 +43,19 @@ private object SolrFlowStage {
   case object Finished extends SolrFlowState
 }
 
-sealed class SolrFlowLogic[T](
+sealed class SolrFlowLogic[T, C](
     collection: String,
     client: SolrClient,
-    in: Inlet[IncomingMessage[T]],
-    out: Outlet[Future[IncomingMessagesResult[T]]],
-    shape: FlowShape[IncomingMessage[T], Future[IncomingMessagesResult[T]]],
+    in: Inlet[IncomingMessage[T, C]],
+    out: Outlet[Future[Seq[IncomingMessageResult[T, C]]]],
+    shape: FlowShape[IncomingMessage[T, C], Future[Seq[IncomingMessageResult[T, C]]]],
     settings: SolrSinkSettings,
     messageBinder: T => SolrInputDocument)
     extends TimerGraphStageLogic(shape) with OutHandler with InHandler {
 
   private var state: SolrFlowState = Idle
-  private val queue = new mutable.Queue[IncomingMessage[T]]()
-  private var failedMessages: Seq[IncomingMessage[T]] = Nil
+  private val queue = new mutable.Queue[IncomingMessage[T, C]]()
+  private var failedMessages: Seq[IncomingMessage[T, C]] = Nil
   private var retryCount: Int = 0
 
   override def onPull(): Unit =
@@ -99,7 +99,8 @@ sealed class SolrFlowLogic[T](
       pull(in)
     }
 
-  private def handleFailure(messages: Seq[IncomingMessage[T]], exc: Throwable): Unit = {
+  private def handleFailure(messages: Seq[IncomingMessage[T, C]],
+                            exc: Throwable): Unit = {
     if (retryCount >= settings.maxRetry && shouldRetry(exc)) {
       failStage(exc)
     } else {
@@ -109,8 +110,11 @@ sealed class SolrFlowLogic[T](
     }
   }
 
-  private def handleResponse(messages: Seq[IncomingMessage[T]], response: SolrResponseBase): Unit = {
-    val result = IncomingMessagesResult(messages.map(_.source), response.getStatus)
+  private def handleResponse(messages: Seq[IncomingMessage[T, C]],
+                             response: SolrResponseBase): Unit = {
+    val result = messages.map(m =>
+      IncomingMessageResult(m.source, m.passThrough, response.getStatus))
+
     emit(out, Future.successful(result))
 
     val nextMessages = (1 to settings.bufferSize).flatMap { _ =>
@@ -130,7 +134,7 @@ sealed class SolrFlowLogic[T](
   private def handleSuccess(): Unit =
     completeStage()
 
-  private def sendBulkToSolr(messages: Seq[IncomingMessage[T]]): Unit = {
+  private def sendBulkToSolr(messages: Seq[IncomingMessage[T, C]]): Unit = {
     val docs = messages.view.map(_.source).map(messageBinder)
     try {
       val response = client.add(collection, docs.asJava, settings.commitWithin)
