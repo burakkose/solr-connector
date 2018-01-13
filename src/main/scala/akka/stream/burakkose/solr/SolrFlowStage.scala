@@ -17,6 +17,21 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
+object IncomingMessage {
+  // Apply method to use when not using passThrough
+  def apply[T](source: T): IncomingMessage[T, NotUsed] =
+    IncomingMessage(source, NotUsed)
+
+  // Java-api - without passThrough
+  def create[T](source: T): IncomingMessage[T, NotUsed] =
+    IncomingMessage(source)
+
+  // Java-api - with passThrough
+  def create[T, C](source: T, passThrough: C): IncomingMessage[T, C] =
+    IncomingMessage(source, passThrough)
+
+}
+
 final case class IncomingMessage[T, C](source: T, passThrough: C)
 
 final case class IncomingMessageResult[T, C](source: T, passThrough: C, status: Int)
@@ -43,7 +58,7 @@ private object SolrFlowStage {
   case object Finished extends SolrFlowState
 }
 
-sealed class SolrFlowLogic[T, C](
+final class SolrFlowLogic[T, C](
     collection: String,
     client: SolrClient,
     in: Inlet[IncomingMessage[T, C]],
@@ -57,6 +72,8 @@ sealed class SolrFlowLogic[T, C](
   private val queue = new mutable.Queue[IncomingMessage[T, C]]()
   private var failedMessages: Seq[IncomingMessage[T, C]] = Nil
   private var retryCount: Int = 0
+
+  setHandlers(in, out, this)
 
   override def onPull(): Unit =
     tryPull()

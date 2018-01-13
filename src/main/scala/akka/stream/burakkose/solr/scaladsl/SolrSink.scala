@@ -14,18 +14,22 @@ object SolrSink {
   /**
    * Scala API: creates a [[SolrFlow]] with [[DocumentObjectBinder]]
    */
-  def apply[T](collection: String, settings: SolrSinkSettings)(
+  def create[T](collection: String, settings: SolrSinkSettings)(
       implicit client: SolrClient
   ): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
-    SolrFlow[T](collection, settings)
+    SolrFlow
+      .create[T](collection, settings)
       .toMat(Sink.ignore)(Keep.right)
 
   /**
    * Scala API: creates a [[SolrFlow]] with custom binder
    */
-  def apply[T](collection: String, settings: SolrSinkSettings, binder: T => SolrInputDocument)(
+  def create[T](collection: String,
+                settings: SolrSinkSettings,
+                binder: T => SolrInputDocument)(
       implicit client: SolrClient,
   ): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
-    SolrFlow[T](collection, settings, binder)
+    SolrFlow
+      .create[T](collection, settings, binder)
       .toMat(Sink.ignore)(Keep.right)
 }

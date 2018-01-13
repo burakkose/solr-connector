@@ -11,6 +11,6 @@ object SolrSource {
   /**
    * Scala API: creates a [[SolrSourceStage]] that consumes as [[Tuple]]
    */
-  def apply(collection: String, tupleStream: TupleStream): Source[Tuple, NotUsed] =
+  def create(collection: String, tupleStream: TupleStream): Source[Tuple, NotUsed] =
     Source.fromGraph(new SolrSourceStage(collection, tupleStream))
 }

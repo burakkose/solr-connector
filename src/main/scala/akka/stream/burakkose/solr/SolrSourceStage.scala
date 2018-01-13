@@ -15,18 +15,30 @@ final class SolrSourceStage(collection: String, tupleStream: TupleStream)
     new SolrSourceLogic(collection, tupleStream, out, shape)
 }
 
-sealed class SolrSourceLogic(collection: String,
-                             tupleStream: TupleStream,
-                             out: Outlet[Tuple],
-                             shape: SourceShape[Tuple])
+final class SolrSourceLogic(collection: String,
+                            tupleStream: TupleStream,
+                            out: Outlet[Tuple],
+                            shape: SourceShape[Tuple])
     extends GraphStageLogic(shape)
     with OutHandler {
 
+  setHandler(out, this)
+
   override def preStart(): Unit =
-    tupleStream.open()
+    try {
+      tupleStream.open()
+    } catch {
+      case exc: Exception =>
+        failStage(exc)
+    }
 
   override def postStop(): Unit =
-    tupleStream.close()
+    try {
+      tupleStream.close()
+    } catch {
+      case exc: Exception =>
+        failStage(exc)
+    }
 
   override def onPull(): Unit = fetchFromSolr()
 
@@ -40,4 +52,6 @@ sealed class SolrSourceLogic(collection: String,
       emit(out, tuple)
     }
   }
+
+
 }

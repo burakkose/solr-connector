@@ -22,7 +22,7 @@ object SolrFlow {
                 settings: SolrSinkSettings,
                 client: SolrClient
   ): javadsl.Flow[IncomingMessage[T, NotUsed], JavaList[IncomingMessageResult[T, NotUsed]], NotUsed] =
-    ScalaSolrFlow[T](collection, settings.asScala)(client)
+    ScalaSolrFlow.create[T](collection, settings.asScala)(client)
       .map(_.asJava)
       .asJava
 
@@ -34,7 +34,7 @@ object SolrFlow {
                 binder: Function[T, SolrInputDocument],
                 client: SolrClient
   ): javadsl.Flow[IncomingMessage[T, NotUsed], JavaList[IncomingMessageResult[T, NotUsed]], NotUsed] =
-    ScalaSolrFlow[T](collection, settings.asScala, i => binder.apply(i))(client)
+    ScalaSolrFlow.create[T](collection, settings.asScala, i => binder.apply(i))(client)
       .map(_.asJava)
       .asJava
 

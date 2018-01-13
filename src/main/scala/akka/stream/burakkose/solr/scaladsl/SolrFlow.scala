@@ -1,7 +1,11 @@
 package akka.stream.burakkose.solr.scaladsl
 
 import akka.NotUsed
-import akka.stream.burakkose.solr.{IncomingMessage, IncomingMessageResult, SolrFlowStage}
+import akka.stream.burakkose.solr.{
+  IncomingMessage,
+  IncomingMessageResult,
+  SolrFlowStage
+}
 import akka.stream.scaladsl.Flow
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.beans.DocumentObjectBinder
@@ -12,7 +16,7 @@ object SolrFlow {
   /**
    * Scala API: creates a [[SolrFlowStage]] with [[DocumentObjectBinder]]
    */
-  def apply[T](collection: String, settings: SolrSinkSettings)(
+  def create[T](collection: String, settings: SolrSinkSettings)(
       implicit client: SolrClient
   ): Flow[IncomingMessage[T, NotUsed], Seq[IncomingMessageResult[T, NotUsed]], NotUsed] =
     Flow
@@ -29,7 +33,9 @@ object SolrFlow {
   /**
    * Scala API: creates a [[SolrFlowStage]] with custom binder
    */
-  def apply[T](collection: String, settings: SolrSinkSettings, binder: T => SolrInputDocument)(
+  def create[T](collection: String,
+                settings: SolrSinkSettings,
+                binder: T => SolrInputDocument)(
       implicit client: SolrClient
   ): Flow[IncomingMessage[T, NotUsed], Seq[IncomingMessageResult[T, NotUsed]], NotUsed] =
     Flow
@@ -63,7 +69,9 @@ object SolrFlow {
   /**
    * Scala API: creates a [[SolrFlowStage]] with custom binder and passThrough
    */
-  def withPassThrough[T, C](collection: String, settings: SolrSinkSettings, binder: T => SolrInputDocument)(
+  def withPassThrough[T, C](collection: String,
+                            settings: SolrSinkSettings,
+                            binder: T => SolrInputDocument)(
       implicit client: SolrClient
   ): Flow[IncomingMessage[T, C], Seq[IncomingMessageResult[T, C]], NotUsed] =
     Flow
