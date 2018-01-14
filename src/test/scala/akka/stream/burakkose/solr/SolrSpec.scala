@@ -5,25 +5,15 @@ import java.io.File
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.burakkose.solr.scaladsl._
-import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.{Sink, Source}
 import akka.testkit.TestKit
 import org.apache.solr.client.solrj.SolrClient
 import org.apache.solr.client.solrj.embedded.JettyConfig
 import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider
-import org.apache.solr.client.solrj.io.stream.expr.{
-  StreamExpressionParser,
-  StreamFactory
-}
-import org.apache.solr.client.solrj.io.stream.{
-  CloudSolrStream,
-  StreamContext,
-  TupleStream
-}
+import org.apache.solr.client.solrj.io.stream.expr.{StreamExpressionParser, StreamFactory}
+import org.apache.solr.client.solrj.io.stream.{CloudSolrStream, StreamContext, TupleStream}
 import org.apache.solr.client.solrj.io.{SolrClientCache, Tuple}
-import org.apache.solr.client.solrj.request.{
-  CollectionAdminRequest,
-  UpdateRequest
-}
+import org.apache.solr.client.solrj.request.{CollectionAdminRequest, UpdateRequest}
 import org.apache.solr.cloud.{MiniSolrCloudCluster, ZkTestServer}
 import org.apache.solr.common.SolrInputDocument
 import org.junit.Assert.assertTrue
@@ -90,7 +80,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
             .create[Book](
               collection = "collection2",
               settings = SolrSinkSettings(commitWithin = 1),
-              binder = fromBookToDoc
+              binder = fromBookToDoc(_)
             )
         )
 
@@ -186,6 +176,82 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         "Scala Puzzlers",
         "Scala for Spark in Production"
       )
+    }
+  }
+
+  "SolrFlow" should {
+    "kafka-example - store documents and pass Responses with passThrough" in {
+      //#kafka-example
+      // We're going to pretend we got messages from kafka.
+      // After we've written them to Solr, we want
+      // to commit the offset to Kafka
+
+      case class KafkaOffset(offset: Int)
+      case class KafkaMessage(book: Book, offset: KafkaOffset)
+
+      val messagesFromKafka = List(
+        KafkaMessage(Book("Book 1"), KafkaOffset(0)),
+        KafkaMessage(Book("Book 2"), KafkaOffset(1)),
+        KafkaMessage(Book("Book 3"), KafkaOffset(2))
+      )
+
+      var committedOffsets = List[KafkaOffset]()
+
+      def commitToKakfa(offset: KafkaOffset): Unit =
+        committedOffsets = committedOffsets :+ offset
+
+      createCollection("collection4") //create new collection
+
+      val res1 = Source(messagesFromKafka)
+        .map { kafkaMessage: KafkaMessage =>
+          val book = kafkaMessage.book
+          val id = book.title
+          println("title: " + book.title)
+
+          // Transform message so that we can write to solr
+          IncomingMessage(book, kafkaMessage.offset)
+        }
+        .via( // write to Solr
+          SolrFlow.withPassThrough[Book, KafkaOffset](
+            collection = "collection4",
+            settings = SolrSinkSettings(commitWithin = 5),
+            binder = fromBookToDoc(_)
+          )
+        )
+        .map { messageResults =>
+          messageResults.foreach { result =>
+            if (result.status != 0)
+              throw new Exception("Failed to write message to Solr")
+            // Commit to kafka
+            commitToKakfa(result.passThrough)
+          }
+        }
+        .runWith(Sink.ignore)
+
+      Await.ready(res1, Duration.Inf)
+
+      // Make sure all messages was committed to kafka
+      assert(List(0, 1, 2) == committedOffsets.map(_.offset))
+
+      val factory = new StreamFactory()
+        .withCollectionZkHost("collection4", cluster.getZkServer.getZkAddress)
+      val solrClientCache = new SolrClientCache()
+      val streamContext = new StreamContext()
+      streamContext.setSolrClientCache(solrClientCache)
+
+      val expression = StreamExpressionParser.parse(
+        """search(collection4, q=*:*, fl="title", sort="title asc")""")
+      val stream: TupleStream = new CloudSolrStream(expression, factory)
+      stream.setStreamContext(streamContext)
+
+      val res2 = SolrSource.create("collection4", stream)
+        .map(fromTupleToBook)
+        .map(_.title)
+        .runWith(Sink.seq)
+
+      val result = Await.result(res2, Duration.Inf).toList
+
+      result.sorted shouldEqual messagesFromKafka.map(_.book.title).sorted
     }
   }
 
