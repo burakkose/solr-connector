@@ -38,14 +38,14 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
   //#define-class
   case class Book(title: String)
 
-  def fromBookToDoc(b: Book): SolrInputDocument = {
+  val bookToDoc: Book => SolrInputDocument = { b =>
     val doc = new SolrInputDocument
     doc.setField("title", b.title)
     doc
   }
 
-  def fromTupleToBook(tup: Tuple): Book = {
-    val title = tup.getString("title")
+  val tupleToBook: Tuple => Book = { t =>
+    val title = t.getString("title")
     Book(title)
   }
   //#define-class
@@ -72,15 +72,15 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
           tupleStream = stream1
         )
         .map { tuple: Tuple =>
-          val book: Book = fromTupleToBook(tuple)
+          val book: Book = tupleToBook(tuple)
           IncomingMessage(book)
         }
         .runWith(
           SolrSink
-            .create[Book](
+            .typed[Book](
               collection = "collection2",
               settings = SolrSinkSettings(commitWithin = 1),
-              binder = fromBookToDoc(_)
+              binder = bookToDoc
             )
         )
 
@@ -96,7 +96,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
       val res2 = SolrSource
         .create("collection2", tupleStream = stream2)
-        .map(fromTupleToBook)
+        .map(tupleToBook)
         .map(_.title)
         .runWith(Sink.seq)
 
@@ -133,15 +133,15 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val res1 = SolrSource
         .create(collection = "collection1", tupleStream = stream1)
         .map { tuple: Tuple =>
-          val book: Book = fromTupleToBook(tuple)
+          val book: Book = tupleToBook(tuple)
           IncomingMessage(book)
         }
         .via(
           SolrFlow
-            .create[Book](
+            .typed[Book](
               collection = "collection3",
               settings = SolrSinkSettings(commitWithin = 1),
-              binder = fromBookToDoc(_)
+              binder = bookToDoc
             )
         )
         .runWith(Sink.seq)
@@ -161,7 +161,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
       val res2 = SolrSource
         .create("collection3", tupleStream = stream2)
-        .map(fromTupleToBook)
+        .map(tupleToBook)
         .map(_.title)
         .runWith(Sink.seq)
 
@@ -212,12 +212,11 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
           IncomingMessage(book, kafkaMessage.offset)
         }
         .via( // write to Solr
-          SolrFlow.withPassThrough[Book, KafkaOffset](
+          SolrFlow.typedWithPassThrough[Book, KafkaOffset](
             collection = "collection4",
             settings = SolrSinkSettings(commitWithin = 5),
-            binder = fromBookToDoc(_)
-          )
-        )
+            binder = bookToDoc
+          ))
         .map { messageResults =>
           messageResults.foreach { result =>
             if (result.status != 0)
@@ -244,8 +243,9 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val stream: TupleStream = new CloudSolrStream(expression, factory)
       stream.setStreamContext(streamContext)
 
-      val res2 = SolrSource.create("collection4", stream)
-        .map(fromTupleToBook)
+      val res2 = SolrSource
+        .create("collection4", stream)
+        .map(tupleToBook)
         .map(_.title)
         .runWith(Sink.seq)
 

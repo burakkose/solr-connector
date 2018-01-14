@@ -12,24 +12,35 @@ import scala.concurrent.Future
 object SolrSink {
 
   /**
-   * Scala API: creates a [[SolrFlow]] with [[DocumentObjectBinder]]
+   * Scala API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing [[SolrInputDocument]].
    */
-  def create[T](collection: String, settings: SolrSinkSettings)(
+  def document[T](collection: String, settings: SolrSinkSettings)(
       implicit client: SolrClient
-  ): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
+  ): Sink[IncomingMessage[SolrInputDocument, NotUsed], Future[Done]] =
     SolrFlow
-      .create[T](collection, settings)
+      .document(collection, settings)
       .toMat(Sink.ignore)(Keep.right)
 
   /**
-   * Scala API: creates a [[SolrFlow]] with custom binder
+   * Scala API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing type `T` with [[DocumentObjectBinder]].
    */
-  def create[T](collection: String,
-                settings: SolrSinkSettings,
-                binder: T => SolrInputDocument)(
-      implicit client: SolrClient,
+  def bean[T](collection: String, settings: SolrSinkSettings)(
+      implicit client: SolrClient
   ): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
     SolrFlow
-      .create[T](collection, settings, binder)
+      .bean[T](collection, settings)
+      .toMat(Sink.ignore)(Keep.right)
+
+  /**
+   * Scala API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing type `T` with `binder` of type 'T'.
+    */
+  def typed[T](
+      collection: String,
+      settings: SolrSinkSettings,
+      binder: T => SolrInputDocument
+  )(implicit client: SolrClient)
+    : Sink[IncomingMessage[T, NotUsed], Future[Done]] =
+    SolrFlow
+      .typed[T](collection, settings, binder)
       .toMat(Sink.ignore)(Keep.right)
 }
