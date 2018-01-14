@@ -118,7 +118,7 @@ final class SolrFlowLogic[T, C](
 
   private def handleFailure(messages: Seq[IncomingMessage[T, C]],
                             exc: Throwable): Unit = {
-    if (retryCount >= settings.maxRetry && shouldRetry(exc)) {
+    if (retryCount >= settings.maxRetry || !shouldRetry(exc)) {
       failStage(exc)
     } else {
       retryCount = retryCount + 1
@@ -152,8 +152,8 @@ final class SolrFlowLogic[T, C](
     completeStage()
 
   private def sendBulkToSolr(messages: Seq[IncomingMessage[T, C]]): Unit = {
-    val docs = messages.view.map(_.source).map(messageBinder)
     try {
+      val docs = messages.map(message => messageBinder(message.source))
       val response = client.add(collection, docs.asJava, settings.commitWithin)
       handleResponse(messages, response)
     } catch {
