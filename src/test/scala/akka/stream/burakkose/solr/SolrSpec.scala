@@ -50,8 +50,8 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
   }
   //#define-class
 
-  "Solr connector" should {
-    "consume and publish document" in {
+  "Un-typed Solr connector" should {
+    "consume and publish SolrInputDocument" in {
       //copy from collection1 to collection2
       createCollection("collection2") //create a new collection
 
@@ -73,14 +73,14 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         )
         .map { tuple: Tuple =>
           val book: Book = tupleToBook(tuple)
-          IncomingMessage(book)
+          val doc: SolrInputDocument = bookToDoc(book)
+          IncomingMessage(doc)
         }
         .runWith(
           SolrSink
-            .typed[Book](
+            .document(
               collection = "collection2",
-              settings = SolrSinkSettings(commitWithin = 1),
-              binder = bookToDoc
+              settings = SolrSinkSettings(commitWithin = 1)
             )
         )
 
@@ -112,12 +112,17 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         "Scala for Spark in Production"
       )
     }
+
   }
 
-  "SolrFlow" should {
-    "store documents and pass with status to downstream" in {
-      // Copy collection1 to collection3
+  "Typed Solr connector" should {
+    "consume and publish documents as specific type using a bean" in {
+      //copy from collection1 to collection3
       createCollection("collection3") //create a new collection
+
+      import org.apache.solr.client.solrj.beans.Field
+      import scala.annotation.meta.field
+      case class BookBean(@(Field @field) title: String)
 
       val factory = new StreamFactory()
         .withCollectionZkHost("collection1", zkHost)
@@ -131,25 +136,23 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       stream1.setStreamContext(streamContext)
 
       val res1 = SolrSource
-        .create(collection = "collection1", tupleStream = stream1)
-        .map { tuple: Tuple =>
-          val book: Book = tupleToBook(tuple)
-          IncomingMessage(book)
-        }
-        .via(
-          SolrFlow
-            .typed[Book](
-              collection = "collection3",
-              settings = SolrSinkSettings(commitWithin = 1),
-              binder = bookToDoc
-            )
+        .create(
+          collection = "collection1",
+          tupleStream = stream1
         )
-        .runWith(Sink.seq)
+        .map { tuple: Tuple =>
+          val title = tuple.getString("title")
+          IncomingMessage(BookBean(title))
+        }
+        .runWith(
+          SolrSink
+            .bean[BookBean](
+            collection = "collection3",
+            settings = SolrSinkSettings(commitWithin = 1)
+          )
+        )
 
-      val result1 = Await.result(res1, Duration.Inf)
-
-      // Assert no errors
-      assert(result1.forall(_.exists(_.status == 0)))
+      Await.result(res1, Duration.Inf)
 
       val factory2 = new StreamFactory()
         .withCollectionZkHost("collection3", zkHost)
@@ -179,8 +182,137 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
     }
   }
 
+  "Typed Solr connector" should {
+    "consume and publish documents as specific type with a binder" in {
+      //copy from collection1 to collection2
+      createCollection("collection4") //create a new collection
+
+      val factory = new StreamFactory()
+        .withCollectionZkHost("collection1", zkHost)
+      val solrClientCache = new SolrClientCache()
+      val streamContext = new StreamContext()
+      streamContext.setSolrClientCache(solrClientCache)
+
+      val expression1 = StreamExpressionParser.parse(
+        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val stream1: TupleStream = new CloudSolrStream(expression1, factory)
+      stream1.setStreamContext(streamContext)
+
+      val res1 = SolrSource
+        .create(
+          collection = "collection1",
+          tupleStream = stream1
+        )
+        .map { tuple: Tuple =>
+          val book: Book = tupleToBook(tuple)
+          IncomingMessage(book)
+        }
+        .runWith(
+          SolrSink
+            .typed[Book](
+            collection = "collection4",
+            settings = SolrSinkSettings(commitWithin = 1),
+            binder = bookToDoc
+          )
+        )
+
+      Await.result(res1, Duration.Inf)
+
+      val factory2 = new StreamFactory()
+        .withCollectionZkHost("collection4", zkHost)
+
+      val expression2 = StreamExpressionParser.parse(
+        """search(collection4, q=*:*, fl="title", sort="title asc")""")
+      val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
+      stream2.setStreamContext(streamContext)
+
+      val res2 = SolrSource
+        .create("collection4", tupleStream = stream2)
+        .map(tupleToBook)
+        .map(_.title)
+        .runWith(Sink.seq)
+
+      val result = Await.result(res2, Duration.Inf)
+
+      result shouldEqual Seq(
+        "Akka Concurrency",
+        "Akka in Action",
+        "Effective Akka",
+        "Learning Scala",
+        "Programming in Scala",
+        "Scala Puzzlers",
+        "Scala for Spark in Production"
+      )
+    }
+  }
+
   "SolrFlow" should {
-    "kafka-example - store documents and pass Responses with passThrough" in {
+    "store documents and pass status to downstream" in {
+      // Copy collection1 to collection3
+      createCollection("collection5") //create a new collection
+
+      val factory = new StreamFactory()
+        .withCollectionZkHost("collection1", zkHost)
+      val solrClientCache = new SolrClientCache()
+      val streamContext = new StreamContext()
+      streamContext.setSolrClientCache(solrClientCache)
+
+      val expression1 = StreamExpressionParser.parse(
+        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val stream1: TupleStream = new CloudSolrStream(expression1, factory)
+      stream1.setStreamContext(streamContext)
+
+      val res1 = SolrSource
+        .create(collection = "collection1", tupleStream = stream1)
+        .map { tuple: Tuple =>
+          val book: Book = tupleToBook(tuple)
+          IncomingMessage(book)
+        }
+        .via(
+          SolrFlow
+            .typed[Book](
+              collection = "collection5",
+              settings = SolrSinkSettings(commitWithin = 1),
+              binder = bookToDoc
+            )
+        )
+        .runWith(Sink.seq)
+
+      val result1 = Await.result(res1, Duration.Inf)
+
+      // Assert no errors
+      assert(result1.forall(_.exists(_.status == 0)))
+
+      val factory2 = new StreamFactory()
+        .withCollectionZkHost("collection5", zkHost)
+
+      val expression2 = StreamExpressionParser.parse(
+        """search(collection5, q=*:*, fl="title", sort="title asc")""")
+      val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
+      stream2.setStreamContext(streamContext)
+
+      val res2 = SolrSource
+        .create("collection5", tupleStream = stream2)
+        .map(tupleToBook)
+        .map(_.title)
+        .runWith(Sink.seq)
+
+      val result = Await.result(res2, Duration.Inf)
+
+      result shouldEqual Seq(
+        "Akka Concurrency",
+        "Akka in Action",
+        "Effective Akka",
+        "Learning Scala",
+        "Programming in Scala",
+        "Scala Puzzlers",
+        "Scala for Spark in Production"
+      )
+    }
+  }
+
+  "SolrFlow" should {
+    "kafka-example - store documents and pass responses with passThrough" in {
       //#kafka-example
       // We're going to pretend we got messages from kafka.
       // After we've written them to Solr, we want
@@ -200,7 +332,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       def commitToKakfa(offset: KafkaOffset): Unit =
         committedOffsets = committedOffsets :+ offset
 
-      createCollection("collection4") //create new collection
+      createCollection("collection6") //create new collection
 
       val res1 = Source(messagesFromKafka)
         .map { kafkaMessage: KafkaMessage =>
@@ -213,7 +345,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         }
         .via( // write to Solr
           SolrFlow.typedWithPassThrough[Book, KafkaOffset](
-            collection = "collection4",
+            collection = "collection6",
             settings = SolrSinkSettings(commitWithin = 5),
             binder = bookToDoc
           ))
@@ -233,18 +365,18 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       assert(List(0, 1, 2) == committedOffsets.map(_.offset))
 
       val factory = new StreamFactory()
-        .withCollectionZkHost("collection4", zkHost)
+        .withCollectionZkHost("collection6", zkHost)
       val solrClientCache = new SolrClientCache()
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
       val expression = StreamExpressionParser.parse(
-        """search(collection4, q=*:*, fl="title", sort="title asc")""")
+        """search(collection6, q=*:*, fl="title", sort="title asc")""")
       val stream: TupleStream = new CloudSolrStream(expression, factory)
       stream.setStreamContext(streamContext)
 
       val res2 = SolrSource
-        .create("collection4", stream)
+        .create("collection6", stream)
         .map(tupleToBook)
         .map(_.title)
         .runWith(Sink.seq)
