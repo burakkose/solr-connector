@@ -31,9 +31,9 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
   //#init-mat
   //#init-client
   import org.apache.solr.client.solrj.impl.CloudSolrClient
-
+  val zkHost = "127.0.0.1:9983/solr"
   implicit val client: SolrClient =
-    new CloudSolrClient.Builder().withZkHost("127.0.0.1:9983/solr").build
+    new CloudSolrClient.Builder().withZkHost(zkHost).build
   //#init-client
   //#define-class
   case class Book(title: String)
@@ -56,7 +56,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       createCollection("collection2") //create a new collection
 
       val factory = new StreamFactory()
-        .withCollectionZkHost("collection1", cluster.getZkServer.getZkAddress)
+        .withCollectionZkHost("collection1", zkHost)
       val solrClientCache = new SolrClientCache()
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
@@ -87,7 +87,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       Await.result(res1, Duration.Inf)
 
       val factory2 = new StreamFactory()
-        .withCollectionZkHost("collection2", "127.0.0.1:9983/solr")
+        .withCollectionZkHost("collection2", zkHost)
 
       val expression2 = StreamExpressionParser.parse(
         """search(collection2, q=*:*, fl="title", sort="title asc")""")
@@ -120,7 +120,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       createCollection("collection3") //create a new collection
 
       val factory = new StreamFactory()
-        .withCollectionZkHost("collection1", cluster.getZkServer.getZkAddress)
+        .withCollectionZkHost("collection1", zkHost)
       val solrClientCache = new SolrClientCache()
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
@@ -152,7 +152,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       assert(result1.forall(_.exists(_.status == 0)))
 
       val factory2 = new StreamFactory()
-        .withCollectionZkHost("collection3", "127.0.0.1:9983/solr")
+        .withCollectionZkHost("collection3", zkHost)
 
       val expression2 = StreamExpressionParser.parse(
         """search(collection3, q=*:*, fl="title", sort="title asc")""")
@@ -233,7 +233,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       assert(List(0, 1, 2) == committedOffsets.map(_.offset))
 
       val factory = new StreamFactory()
-        .withCollectionZkHost("collection4", cluster.getZkServer.getZkAddress)
+        .withCollectionZkHost("collection4", zkHost)
       val solrClientCache = new SolrClientCache()
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
