@@ -20,12 +20,10 @@ object SolrSink {
       collection: String,
       settings: SolrSinkSettings,
       client: SolrClient
-  ): javadsl.Sink[IncomingMessage[SolrInputDocument, NotUsed],
-                  CompletionStage[Done]] =
+  ): javadsl.Sink[IncomingMessage[SolrInputDocument, NotUsed], CompletionStage[Done]] =
     SolrFlow
       .document(collection, settings, client)
-      .toMat(javadsl.Sink.ignore,
-             javadsl.Keep.right[NotUsed, CompletionStage[Done]])
+      .toMat(javadsl.Sink.ignore, javadsl.Keep.right[NotUsed, CompletionStage[Done]])
 
   /**
    * Java API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing type `T` with [[DocumentObjectBinder]].
@@ -38,8 +36,7 @@ object SolrSink {
   ): Sink[IncomingMessage[T, NotUsed], CompletionStage[Done]] =
     SolrFlow
       .bean[T](collection, settings, client, clazz)
-      .toMat(javadsl.Sink.ignore,
-             javadsl.Keep.right[NotUsed, CompletionStage[Done]])
+      .toMat(javadsl.Sink.ignore, javadsl.Keep.right[NotUsed, CompletionStage[Done]])
 
   /**
    * Java API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing type `T` with `binder` of type 'T'.
@@ -53,6 +50,5 @@ object SolrSink {
   ): javadsl.Sink[IncomingMessage[T, NotUsed], CompletionStage[Done]] =
     SolrFlow
       .typed[T](collection, settings, binder, client, clazz)
-      .toMat(javadsl.Sink.ignore,
-             javadsl.Keep.right[NotUsed, CompletionStage[Done]])
+      .toMat(javadsl.Sink.ignore, javadsl.Keep.right[NotUsed, CompletionStage[Done]])
 }

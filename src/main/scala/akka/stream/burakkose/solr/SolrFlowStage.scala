@@ -36,11 +36,12 @@ final case class IncomingMessage[T, C](source: T, passThrough: C)
 
 final case class IncomingMessageResult[T, C](source: T, passThrough: C, status: Int)
 
-class SolrFlowStage[T, C](collection: String,
-                          client: SolrClient,
-                          settings: SolrSinkSettings,
-                          messageBinder: T => SolrInputDocument)
-    extends GraphStage[FlowShape[IncomingMessage[T, C], Future[Seq[IncomingMessageResult[T, C]]]]] {
+class SolrFlowStage[T, C](
+    collection: String,
+    client: SolrClient,
+    settings: SolrSinkSettings,
+    messageBinder: T => SolrInputDocument
+) extends GraphStage[FlowShape[IncomingMessage[T, C], Future[Seq[IncomingMessageResult[T, C]]]]] {
 
   private val in = Inlet[IncomingMessage[T, C]]("messages")
   private val out = Outlet[Future[Seq[IncomingMessageResult[T, C]]]]("result")
@@ -53,9 +54,13 @@ class SolrFlowStage[T, C](collection: String,
 private sealed trait SolrFlowState
 
 private object SolrFlowStage {
+
   case object Idle extends SolrFlowState
+
   case object Sending extends SolrFlowState
+
   case object Finished extends SolrFlowState
+
 }
 
 final class SolrFlowLogic[T, C](
@@ -65,8 +70,10 @@ final class SolrFlowLogic[T, C](
     out: Outlet[Future[Seq[IncomingMessageResult[T, C]]]],
     shape: FlowShape[IncomingMessage[T, C], Future[Seq[IncomingMessageResult[T, C]]]],
     settings: SolrSinkSettings,
-    messageBinder: T => SolrInputDocument)
-    extends TimerGraphStageLogic(shape) with OutHandler with InHandler {
+    messageBinder: T => SolrInputDocument
+) extends TimerGraphStageLogic(shape)
+    with OutHandler
+    with InHandler {
 
   private var state: SolrFlowState = Idle
   private val queue = new mutable.Queue[IncomingMessage[T, C]]()
@@ -106,8 +113,8 @@ final class SolrFlowLogic[T, C](
     failStage(ex)
 
   override def onUpstreamFinish(): Unit = state match {
-    case Idle     => handleSuccess()
-    case Sending  => state = Finished
+    case Idle => handleSuccess()
+    case Sending => state = Finished
     case Finished => ()
   }
 
@@ -116,8 +123,7 @@ final class SolrFlowLogic[T, C](
       pull(in)
     }
 
-  private def handleFailure(messages: Seq[IncomingMessage[T, C]],
-                            exc: Throwable): Unit = {
+  private def handleFailure(messages: Seq[IncomingMessage[T, C]], exc: Throwable): Unit =
     if (retryCount >= settings.maxRetry || !shouldRetry(exc)) {
       failStage(exc)
     } else {
@@ -125,12 +131,9 @@ final class SolrFlowLogic[T, C](
       failedMessages = messages
       scheduleOnce(NotUsed, settings.retryInterval.millis)
     }
-  }
 
-  private def handleResponse(messages: Seq[IncomingMessage[T, C]],
-                             response: SolrResponseBase): Unit = {
-    val result = messages.map(m =>
-      IncomingMessageResult(m.source, m.passThrough, response.getStatus))
+  private def handleResponse(messages: Seq[IncomingMessage[T, C]], response: SolrResponseBase): Unit = {
+    val result = messages.map(m => IncomingMessageResult(m.source, m.passThrough, response.getStatus))
 
     emit(out, Future.successful(result))
 
@@ -141,7 +144,7 @@ final class SolrFlowLogic[T, C](
     if (nextMessages.isEmpty) {
       state match {
         case Finished => handleSuccess()
-        case _        => state = Idle
+        case _ => state = Idle
       }
     } else {
       sendBulkToSolr(nextMessages)
@@ -151,7 +154,7 @@ final class SolrFlowLogic[T, C](
   private def handleSuccess(): Unit =
     completeStage()
 
-  private def sendBulkToSolr(messages: Seq[IncomingMessage[T, C]]): Unit = {
+  private def sendBulkToSolr(messages: Seq[IncomingMessage[T, C]]): Unit =
     try {
       val docs = messages.map(message => messageBinder(message.source))
       val response = client.add(collection, docs.asJava, settings.commitWithin)
@@ -160,15 +163,14 @@ final class SolrFlowLogic[T, C](
       case ex: Exception =>
         handleFailure(messages, ex)
     }
-  }
 
   private def shouldRetry(exc: Throwable): Boolean = {
     val rootCause = SolrException.getRootCause(exc)
     rootCause match {
-      case _: ConnectException        => true
+      case _: ConnectException => true
       case _: NoHttpResponseException => true
-      case _: SocketException         => true
-      case _                          => false
+      case _: SocketException => true
+      case _ => false
     }
   }
 }

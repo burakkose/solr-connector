@@ -5,8 +5,10 @@ import akka.stream.{Attributes, Outlet, SourceShape}
 import org.apache.solr.client.solrj.io.Tuple
 import org.apache.solr.client.solrj.io.stream.TupleStream
 
-final class SolrSourceStage(collection: String, tupleStream: TupleStream)
-    extends GraphStage[SourceShape[Tuple]] {
+final class SolrSourceStage(
+    collection: String,
+    tupleStream: TupleStream
+) extends GraphStage[SourceShape[Tuple]] {
 
   val out: Outlet[Tuple] = Outlet("SolrSource.out")
   override val shape: SourceShape[Tuple] = SourceShape(out)
@@ -15,11 +17,12 @@ final class SolrSourceStage(collection: String, tupleStream: TupleStream)
     new SolrSourceLogic(collection, tupleStream, out, shape)
 }
 
-final class SolrSourceLogic(collection: String,
-                            tupleStream: TupleStream,
-                            out: Outlet[Tuple],
-                            shape: SourceShape[Tuple])
-    extends GraphStageLogic(shape)
+final class SolrSourceLogic(
+    collection: String,
+    tupleStream: TupleStream,
+    out: Outlet[Tuple],
+    shape: SourceShape[Tuple]
+) extends GraphStageLogic(shape)
     with OutHandler {
 
   setHandler(out, this)
@@ -52,6 +55,5 @@ final class SolrSourceLogic(collection: String,
       emit(out, tuple)
     }
   }
-
 
 }

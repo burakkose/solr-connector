@@ -61,8 +61,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
-      val expression1 = StreamExpressionParser.parse(
-        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val expression1 = StreamExpressionParser.parse("""search(collection1, q=*:*, fl="title", sort="title asc")""")
       val stream1: TupleStream = new CloudSolrStream(expression1, factory)
       stream1.setStreamContext(streamContext)
 
@@ -89,8 +88,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val factory2 = new StreamFactory()
         .withCollectionZkHost("collection2", zkHost)
 
-      val expression2 = StreamExpressionParser.parse(
-        """search(collection2, q=*:*, fl="title", sort="title asc")""")
+      val expression2 = StreamExpressionParser.parse("""search(collection2, q=*:*, fl="title", sort="title asc")""")
       val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
       stream2.setStreamContext(streamContext)
 
@@ -124,14 +122,12 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       import scala.annotation.meta.field
       case class BookBean(@(Field @field) title: String)
 
-      val factory = new StreamFactory()
-        .withCollectionZkHost("collection1", zkHost)
+      val factory = new StreamFactory().withCollectionZkHost("collection1", zkHost)
       val solrClientCache = new SolrClientCache()
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
-      val expression1 = StreamExpressionParser.parse(
-        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val expression1 = StreamExpressionParser.parse("""search(collection1, q=*:*, fl="title", sort="title asc")""")
       val stream1: TupleStream = new CloudSolrStream(expression1, factory)
       stream1.setStreamContext(streamContext)
 
@@ -147,9 +143,9 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         .runWith(
           SolrSink
             .bean[BookBean](
-            collection = "collection3",
-            settings = SolrSinkSettings(commitWithin = 1)
-          )
+              collection = "collection3",
+              settings = SolrSinkSettings(commitWithin = 1)
+            )
         )
 
       Await.result(res1, Duration.Inf)
@@ -157,8 +153,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val factory2 = new StreamFactory()
         .withCollectionZkHost("collection3", zkHost)
 
-      val expression2 = StreamExpressionParser.parse(
-        """search(collection3, q=*:*, fl="title", sort="title asc")""")
+      val expression2 = StreamExpressionParser.parse("""search(collection3, q=*:*, fl="title", sort="title asc")""")
       val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
       stream2.setStreamContext(streamContext)
 
@@ -193,8 +188,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
-      val expression1 = StreamExpressionParser.parse(
-        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val expression1 = StreamExpressionParser.parse("""search(collection1, q=*:*, fl="title", sort="title asc")""")
       val stream1: TupleStream = new CloudSolrStream(expression1, factory)
       stream1.setStreamContext(streamContext)
 
@@ -210,10 +204,10 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
         .runWith(
           SolrSink
             .typed[Book](
-            collection = "collection4",
-            settings = SolrSinkSettings(commitWithin = 1),
-            binder = bookToDoc
-          )
+              collection = "collection4",
+              settings = SolrSinkSettings(commitWithin = 1),
+              binder = bookToDoc
+            )
         )
 
       Await.result(res1, Duration.Inf)
@@ -221,8 +215,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val factory2 = new StreamFactory()
         .withCollectionZkHost("collection4", zkHost)
 
-      val expression2 = StreamExpressionParser.parse(
-        """search(collection4, q=*:*, fl="title", sort="title asc")""")
+      val expression2 = StreamExpressionParser.parse("""search(collection4, q=*:*, fl="title", sort="title asc")""")
       val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
       stream2.setStreamContext(streamContext)
 
@@ -257,8 +250,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
-      val expression1 = StreamExpressionParser.parse(
-        """search(collection1, q=*:*, fl="title", sort="title asc")""")
+      val expression1 = StreamExpressionParser.parse("""search(collection1, q=*:*, fl="title", sort="title asc")""")
       val stream1: TupleStream = new CloudSolrStream(expression1, factory)
       stream1.setStreamContext(streamContext)
 
@@ -286,8 +278,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val factory2 = new StreamFactory()
         .withCollectionZkHost("collection5", zkHost)
 
-      val expression2 = StreamExpressionParser.parse(
-        """search(collection5, q=*:*, fl="title", sort="title asc")""")
+      val expression2 = StreamExpressionParser.parse("""search(collection5, q=*:*, fl="title", sort="title asc")""")
       val stream2: TupleStream = new CloudSolrStream(expression2, factory2)
       stream2.setStreamContext(streamContext)
 
@@ -348,7 +339,8 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
             collection = "collection6",
             settings = SolrSinkSettings(commitWithin = 5),
             binder = bookToDoc
-          ))
+          )
+        )
         .map { messageResults =>
           messageResults.foreach { result =>
             if (result.status != 0)
@@ -370,8 +362,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
       val streamContext = new StreamContext()
       streamContext.setSolrClientCache(solrClientCache)
 
-      val expression = StreamExpressionParser.parse(
-        """search(collection6, q=*:*, fl="title", sort="title asc")""")
+      val expression = StreamExpressionParser.parse("""search(collection6, q=*:*, fl="title", sort="title asc")""")
       val stream: TupleStream = new CloudSolrStream(expression, factory)
       stream.setStreamContext(streamContext)
 
@@ -432,8 +423,7 @@ class SolrSpec extends WordSpecLike with Matchers with BeforeAndAfterAll {
 
     createCollection("collection1")
 
-    assertTrue(
-      !cluster.getSolrClient.getZkStateReader.getClusterState.getLiveNodes.isEmpty)
+    assertTrue(!cluster.getSolrClient.getZkStateReader.getClusterState.getLiveNodes.isEmpty)
   }
 
   private def createCollection(name: String) =

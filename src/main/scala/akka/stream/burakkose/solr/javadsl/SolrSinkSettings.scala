@@ -3,10 +3,7 @@ package akka.stream.burakkose.solr.javadsl
 import akka.stream.burakkose.solr._
 import scaladsl.{SolrSinkSettings => ScalaSolrSinkSettings}
 
-final class SolrSinkSettings(val bufferSize: Int,
-                             val retryInterval: Int,
-                             val maxRetry: Int,
-                             val commitWithin: Int) {
+final class SolrSinkSettings(val bufferSize: Int, val retryInterval: Int, val maxRetry: Int, val commitWithin: Int) {
 
   def this() = this(10, 5000, 100, -1)
 

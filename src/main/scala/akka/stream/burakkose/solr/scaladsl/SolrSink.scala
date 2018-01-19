@@ -33,13 +33,12 @@ object SolrSink {
 
   /**
    * Scala API: creates a [[SolrFlow] to Solr for [[IncomingMessage]] containing type `T` with `binder` of type 'T'.
-    */
+   */
   def typed[T](
       collection: String,
       settings: SolrSinkSettings,
       binder: T => SolrInputDocument
-  )(implicit client: SolrClient)
-    : Sink[IncomingMessage[T, NotUsed], Future[Done]] =
+  )(implicit client: SolrClient): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
     SolrFlow
       .typed[T](collection, settings, binder)
       .toMat(Sink.ignore)(Keep.right)
