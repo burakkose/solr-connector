@@ -11,6 +11,7 @@ libraryDependencies ++= {
   val scalaTestVersion = "3.0.4"
   val solrjVersion = "7.2.0"
   val slf4jVersion = "1.7.25"
+  val junitInterfaceVersion = "0.11"
   Seq(
     "com.typesafe.akka" %% "akka-stream" % akkaVersion,
     "org.apache.solr" % "solr-solrj" % solrjVersion,
@@ -18,7 +19,8 @@ libraryDependencies ++= {
     "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
     "org.apache.solr" % "solr-test-framework" % solrjVersion % Test,
     "org.slf4j" % "slf4j-log4j12" % slf4jVersion % Test,
-    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test
+    "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
+    "com.novocode" % "junit-interface" % junitInterfaceVersion % Test
   )
 }
 
