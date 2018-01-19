@@ -21,3 +21,5 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test
   )
 }
+
+testOptions in Test += Tests.Argument(TestFrameworks.JUnit, "-a")
