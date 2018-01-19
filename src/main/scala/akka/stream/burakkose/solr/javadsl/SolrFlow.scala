@@ -38,7 +38,8 @@ object SolrFlow {
   def bean[T](
       collection: String,
       settings: SolrSinkSettings,
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): javadsl.Flow[IncomingMessage[T, NotUsed],
                   JavaList[IncomingMessageResult[T, NotUsed]],
                   NotUsed] =
@@ -55,7 +56,8 @@ object SolrFlow {
       collection: String,
       settings: SolrSinkSettings,
       binder: Function[T, SolrInputDocument],
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): javadsl.Flow[IncomingMessage[T, NotUsed],
                   JavaList[IncomingMessageResult[T, NotUsed]],
                   NotUsed] =
@@ -87,7 +89,8 @@ object SolrFlow {
   def beanWithPassThrough[T, C](
       collection: String,
       settings: SolrSinkSettings,
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): javadsl.Flow[IncomingMessage[T, C],
                   JavaList[IncomingMessageResult[T, C]],
                   NotUsed] =
@@ -104,7 +107,8 @@ object SolrFlow {
       collection: String,
       settings: SolrSinkSettings,
       binder: Function[T, SolrInputDocument],
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): javadsl.Flow[IncomingMessage[T, C],
                   JavaList[IncomingMessageResult[T, C]],
                   NotUsed] =

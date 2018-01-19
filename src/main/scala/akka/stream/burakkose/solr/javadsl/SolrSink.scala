@@ -33,10 +33,11 @@ object SolrSink {
   def bean[T](
       collection: String,
       settings: SolrSinkSettings,
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): Sink[IncomingMessage[T, NotUsed], CompletionStage[Done]] =
     SolrFlow
-      .bean[T](collection, settings, client)
+      .bean[T](collection, settings, client, clazz)
       .toMat(javadsl.Sink.ignore,
              javadsl.Keep.right[NotUsed, CompletionStage[Done]])
 
@@ -47,10 +48,11 @@ object SolrSink {
       collection: String,
       settings: SolrSinkSettings,
       binder: Function[T, SolrInputDocument],
-      client: SolrClient
+      client: SolrClient,
+      clazz: Class[T]
   ): javadsl.Sink[IncomingMessage[T, NotUsed], CompletionStage[Done]] =
     SolrFlow
-      .typed[T](collection, settings, binder, client)
+      .typed[T](collection, settings, binder, client, clazz)
       .toMat(javadsl.Sink.ignore,
              javadsl.Keep.right[NotUsed, CompletionStage[Done]])
 }
