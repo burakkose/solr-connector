@@ -9,13 +9,13 @@ import akka.stream.stage.{GraphStage, InHandler, OutHandler, TimerGraphStageLogi
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import org.apache.http.NoHttpResponseException
 import org.apache.solr.client.solrj.SolrClient
-import org.apache.solr.client.solrj.response.SolrResponseBase
 import org.apache.solr.common.{SolrException, SolrInputDocument}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 object IncomingMessage {
   // Apply method to use when not using passThrough
@@ -54,13 +54,9 @@ class SolrFlowStage[T, C](
 private sealed trait SolrFlowState
 
 private object SolrFlowStage {
-
   case object Idle extends SolrFlowState
-
   case object Sending extends SolrFlowState
-
   case object Finished extends SolrFlowState
-
 }
 
 final class SolrFlowLogic[T, C](
@@ -124,7 +120,7 @@ final class SolrFlowLogic[T, C](
     }
 
   private def handleFailure(messages: Seq[IncomingMessage[T, C]], exc: Throwable): Unit =
-    if (retryCount >= settings.maxRetry || !shouldRetry(exc)) {
+    if (retryCount >= settings.maxRetry) {
       failStage(exc)
     } else {
       retryCount = retryCount + 1
@@ -132,8 +128,9 @@ final class SolrFlowLogic[T, C](
       scheduleOnce(NotUsed, settings.retryInterval.millis)
     }
 
-  private def handleResponse(messages: Seq[IncomingMessage[T, C]], response: SolrResponseBase): Unit = {
-    val result = messages.map(m => IncomingMessageResult(m.source, m.passThrough, response.getStatus))
+  private def handleResponse(messages: Seq[IncomingMessage[T, C]], status: Int): Unit = {
+    retryCount = 0
+    val result = messages.map(m => IncomingMessageResult(m.source, m.passThrough, status))
 
     emit(out, Future.successful(result))
 
@@ -158,19 +155,26 @@ final class SolrFlowLogic[T, C](
     try {
       val docs = messages.map(message => messageBinder(message.source))
       val response = client.add(collection, docs.asJava, settings.commitWithin)
-      handleResponse(messages, response)
+      handleResponse(messages, response.getStatus)
     } catch {
-      case ex: Exception =>
-        handleFailure(messages, ex)
+      case NonFatal(exc) =>
+        val rootCause = SolrException.getRootCause(exc)
+        if (shouldRetry(rootCause)) {
+          handleFailure(messages, exc)
+        } else {
+          val status = exc match {
+            case e: SolrException => e.code()
+            case _ => -1
+          }
+          handleResponse(messages, status)
+        }
     }
 
-  private def shouldRetry(exc: Throwable): Boolean = {
-    val rootCause = SolrException.getRootCause(exc)
-    rootCause match {
+  private def shouldRetry(cause: Throwable): Boolean =
+    cause match {
       case _: ConnectException => true
       case _: NoHttpResponseException => true
       case _: SocketException => true
       case _ => false
     }
-  }
 }

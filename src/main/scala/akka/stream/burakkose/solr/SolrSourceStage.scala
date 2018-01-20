@@ -5,6 +5,8 @@ import akka.stream.{Attributes, Outlet, SourceShape}
 import org.apache.solr.client.solrj.io.Tuple
 import org.apache.solr.client.solrj.io.stream.TupleStream
 
+import scala.util.control.NonFatal
+
 final class SolrSourceStage(
     collection: String,
     tupleStream: TupleStream
@@ -31,7 +33,7 @@ final class SolrSourceLogic(
     try {
       tupleStream.open()
     } catch {
-      case exc: Exception =>
+      case NonFatal(exc) =>
         failStage(exc)
     }
 
@@ -39,7 +41,7 @@ final class SolrSourceLogic(
     try {
       tupleStream.close()
     } catch {
-      case exc: Exception =>
+      case NonFatal(exc) =>
         failStage(exc)
     }
 
