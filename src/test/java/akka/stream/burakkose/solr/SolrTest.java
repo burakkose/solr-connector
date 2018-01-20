@@ -77,24 +77,24 @@ public class SolrTest {
 
     @Test
     public void solrInputDocumentStream() throws Exception {
-        //copy from collection1 to collection2
+        // Copy collection1 to collection2 through document stream
         createCollection("collection2"); //create a new collection
 
-        StreamFactory factory = new StreamFactory()
-                .withCollectionZkHost("collection1", zkHost);
+        //#run-document
+        StreamFactory factory = new StreamFactory().withCollectionZkHost("collection1", zkHost);
         SolrClientCache solrClientCache = new SolrClientCache();
         StreamContext streamContext = new StreamContext();
         streamContext.setSolrClientCache(solrClientCache);
 
-        StreamExpression expression1 = StreamExpressionParser.parse(
+        StreamExpression expression = StreamExpressionParser.parse(
                 "search(collection1, q=*:*, fl=\"title\", sort=\"title asc\")");
-        TupleStream stream1 = new CloudSolrStream(expression1, factory);
-        stream1.setStreamContext(streamContext);
+        TupleStream stream = new CloudSolrStream(expression, factory);
+        stream.setStreamContext(streamContext);
 
         SolrSinkSettings sinkSettings = new SolrSinkSettings().withCommitWithin(5);
-        CompletionStage<Done> res1 = SolrSource.create(
+        CompletionStage<Done> f1 = SolrSource.create(
                 "collection1",
-                stream1
+                stream
         ).map(tuple -> {
             Book book = tupleToBook.apply(tuple);
             SolrInputDocument doc = bookToDoc.apply(book);
@@ -107,8 +107,9 @@ public class SolrTest {
                 ),
                 materializer
         );
+        //#run-document
 
-        res1.toCompletableFuture().get();
+        f1.toCompletableFuture().get();
 
         StreamFactory factory2 = new StreamFactory()
                 .withCollectionZkHost("collection2", zkHost);
@@ -142,9 +143,10 @@ public class SolrTest {
 
     @Test
     public void beanStream() throws Exception {
-        //copy from collection1 to collection3
+        // Copy collection1 to collection3 through bean stream
         createCollection("collection3"); //create a new collection
 
+        //#define-bean
         class BookBean {
             @Field("title")
             public String title;
@@ -153,22 +155,23 @@ public class SolrTest {
                 this.title = title;
             }
         }
+        //#define-bean
 
-        StreamFactory factory = new StreamFactory()
-                .withCollectionZkHost("collection1", zkHost);
+        //#run-bean
+        StreamFactory factory = new StreamFactory().withCollectionZkHost("collection1", zkHost);
         SolrClientCache solrClientCache = new SolrClientCache();
         StreamContext streamContext = new StreamContext();
         streamContext.setSolrClientCache(solrClientCache);
 
-        StreamExpression expression1 = StreamExpressionParser.parse(
+        StreamExpression expression = StreamExpressionParser.parse(
                 "search(collection1, q=*:*, fl=\"title\", sort=\"title asc\")");
-        TupleStream stream1 = new CloudSolrStream(expression1, factory);
-        stream1.setStreamContext(streamContext);
+        TupleStream stream = new CloudSolrStream(expression, factory);
+        stream.setStreamContext(streamContext);
 
         SolrSinkSettings sinkSettings = new SolrSinkSettings().withCommitWithin(5);
-        CompletionStage<Done> res1 = SolrSource.create(
+        CompletionStage<Done> f1 = SolrSource.create(
                 "collection1",
-                stream1
+                stream
         ).map(tuple -> {
             String title = tuple.getString("title");
             return IncomingMessage.create(new BookBean(title));
@@ -181,8 +184,9 @@ public class SolrTest {
                 ),
                 materializer
         );
+        //#run-bean
 
-        res1.toCompletableFuture().get();
+        f1.toCompletableFuture().get();
 
         StreamFactory factory2 = new StreamFactory()
                 .withCollectionZkHost("collection3", zkHost);
@@ -216,24 +220,24 @@ public class SolrTest {
 
     @Test
     public void typedStream() throws Exception {
-        //copy from collection1 to collection2
+        // Copy collection1 to collection4 through typed stream
         createCollection("collection4"); //create a new collection
 
-        StreamFactory factory = new StreamFactory()
-                .withCollectionZkHost("collection1", zkHost);
+        //#run-typed
+        StreamFactory factory = new StreamFactory().withCollectionZkHost("collection1", zkHost);
         SolrClientCache solrClientCache = new SolrClientCache();
         StreamContext streamContext = new StreamContext();
         streamContext.setSolrClientCache(solrClientCache);
 
-        StreamExpression expression1 = StreamExpressionParser.parse(
+        StreamExpression expression = StreamExpressionParser.parse(
                 "search(collection1, q=*:*, fl=\"title\", sort=\"title asc\")");
-        TupleStream stream1 = new CloudSolrStream(expression1, factory);
-        stream1.setStreamContext(streamContext);
+        TupleStream stream = new CloudSolrStream(expression, factory);
+        stream.setStreamContext(streamContext);
 
         SolrSinkSettings sinkSettings = new SolrSinkSettings().withCommitWithin(5);
-        CompletionStage<Done> res1 = SolrSource.create(
+        CompletionStage<Done> f1 = SolrSource.create(
                 "collection1",
-                stream1
+                stream
         )
                 .map(tuple -> IncomingMessage.create(tupleToBook.apply(tuple)))
                 .runWith(
@@ -246,8 +250,9 @@ public class SolrTest {
                         ),
                         materializer
                 );
+        //#run-typed
 
-        res1.toCompletableFuture().get();
+        f1.toCompletableFuture().get();
 
         StreamFactory factory2 = new StreamFactory()
                 .withCollectionZkHost("collection4", zkHost);
@@ -281,24 +286,24 @@ public class SolrTest {
 
     @Test
     public void flow() throws Exception {
-        // Copy collection1 to collection3
+        // Copy collection1 to collection5 through typed stream
         createCollection("collection5"); //create a new collection
 
-        StreamFactory factory = new StreamFactory()
-                .withCollectionZkHost("collection1", zkHost);
+        //#run-flow
+        StreamFactory factory = new StreamFactory().withCollectionZkHost("collection1", zkHost);
         SolrClientCache solrClientCache = new SolrClientCache();
         StreamContext streamContext = new StreamContext();
         streamContext.setSolrClientCache(solrClientCache);
 
-        StreamExpression expression1 = StreamExpressionParser.parse(
+        StreamExpression expression = StreamExpressionParser.parse(
                 "search(collection1, q=*:*, fl=\"title\", sort=\"title asc\")");
-        TupleStream stream1 = new CloudSolrStream(expression1, factory);
-        stream1.setStreamContext(streamContext);
+        TupleStream stream = new CloudSolrStream(expression, factory);
+        stream.setStreamContext(streamContext);
 
         SolrSinkSettings sinkSettings = new SolrSinkSettings().withCommitWithin(5);
-        CompletionStage<Done> res1 = SolrSource.create(
+        CompletionStage<Done> f1 = SolrSource.create(
                 "collection1",
-                stream1
+                stream
         )
                 .map(tuple -> IncomingMessage.create(tupleToBook.apply(tuple)))
                 .via(
@@ -311,8 +316,9 @@ public class SolrTest {
                         )
                 )
                 .runWith(Sink.ignore(), materializer);
+        //#run-flow
 
-        res1.toCompletableFuture().get();
+        f1.toCompletableFuture().get();
 
         StreamFactory factory2 = new StreamFactory()
                 .withCollectionZkHost("collection5", zkHost);
@@ -388,6 +394,7 @@ public class SolrTest {
             return NotUsed.getInstance();
         }).runWith(Sink.seq(), materializer) // Run it
                 .toCompletableFuture().get(); // Wait for it to complete
+        //#kafka-example
 
         // Make sure all messages was committed to kafka
         assertEquals(Arrays.asList(0, 1, 2), kafkaCommitter.committedOffsets);
